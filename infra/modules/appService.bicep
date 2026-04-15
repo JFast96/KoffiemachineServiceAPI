@@ -8,14 +8,16 @@ param baseName string
 @secure()
 param sqlConnectionString string = ''
 
-// App Service Plan (Linux, F1 Free tier)
+// App Service Plan (Linux, B1 Basic tier)
+// B1 is used because Free (F1) tier has quota restrictions on new Azure subscriptions.
+// B1 costs ~$13/month, well within the $200 free trial credit.
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: '${baseName}-plan'
   location: location
   kind: 'linux'
   sku: {
-    name: 'F1'
-    tier: 'Free'
+    name: 'B1'
+    tier: 'Basic'
   }
   properties: {
     reserved: true // Required for Linux
@@ -31,7 +33,7 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
     httpsOnly: true
     siteConfig: {
       linuxFxVersion: 'DOTNETCORE|9.0'
-      alwaysOn: false // Not available on F1
+      alwaysOn: true
       appSettings: [
         {
           name: 'ConnectionStrings__DefaultConnection'
