@@ -23,12 +23,15 @@ module sql 'modules/sqlDatabase.bicep' = {
 }
 
 // --- App Service (API) ---
+// Connection string is built here and passed as @secure() — never exposed as a Bicep output.
+var sqlConnectionString = 'Server=tcp:${sql.outputs.sqlServerFqdn},1433;Initial Catalog=${sql.outputs.databaseName};Persist Security Info=False;User ID=${sqlAdminLogin};Password=${sqlAdminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
+
 module appService 'modules/appService.bicep' = {
   name: 'appservice-deployment'
   params: {
     location: location
     baseName: baseName
-    sqlConnectionString: sql.outputs.connectionString
+    sqlConnectionString: sqlConnectionString
   }
 }
 

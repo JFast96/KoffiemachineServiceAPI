@@ -1,11 +1,13 @@
 using KoffiemachineServiceAPI.DTOs;
 using KoffiemachineServiceAPI.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KoffiemachineServiceAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class MachinesController : ControllerBase
 {
     private readonly IMachineService _machineService;
@@ -19,6 +21,7 @@ public class MachinesController : ControllerBase
     /// Register a new coffee machine.
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(MachineResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateMachineRequest request)
@@ -65,6 +68,7 @@ public class MachinesController : ControllerBase
     /// Update the status of a coffee machine (with optimistic concurrency control).
     /// </summary>
     [HttpPut("{id:guid}/status")]
+    [Authorize(Roles = "Admin,Technicus")]
     [ProducesResponseType(typeof(MachineResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

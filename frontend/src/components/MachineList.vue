@@ -11,7 +11,7 @@ const page = ref(1)
 const pageSize = 20
 const statusFilter = ref('')
 
-const statuses = ['', 'Actief', 'Inactief', 'Defect', 'In onderhoud']
+const statuses = ['Actief', 'Inactief', 'Defect', 'In onderhoud']
 
 async function loadMachines() {
   loading.value = true
@@ -34,7 +34,17 @@ function statusClass(status: string): string {
   return ''
 }
 
-watch([page, statusFilter], () => {
+function resetFilter() {
+  statusFilter.value = ''
+  page.value = 1
+}
+
+watch(statusFilter, () => {
+  page.value = 1
+  loadMachines()
+})
+
+watch(page, () => {
   loadMachines()
 })
 
@@ -45,23 +55,43 @@ onMounted(() => {
 
 <template>
   <div>
-    <div class="list-header">
-      <h1>Koffiemachines</h1>
-      <div class="list-controls">
-        <select v-model="statusFilter">
-          <option value="">Alle statussen</option>
-          <option v-for="s in statuses.slice(1)" :key="s" :value="s">{{ s }}</option>
-        </select>
-        <RouterLink to="/machines/new" class="btn btn-primary">+ Nieuwe Machine</RouterLink>
+    <!-- Page header -->
+    <div class="page-header">
+      <div>
+        <h1>Koffiemachines</h1>
+        <p class="page-subtitle" v-if="result">
+          {{ result.totalRecords.toLocaleString('nl-NL') }} machines geregistreerd
+        </p>
+      </div>
+      <RouterLink to="/machines/new" class="btn btn-primary">
+        + Nieuwe Machine
+      </RouterLink>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters card">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Filter op status</label>
+          <select v-model="statusFilter">
+            <option value="">Alle statussen</option>
+            <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
+          </select>
+        </div>
+        <button v-if="statusFilter" class="btn btn-ghost" @click="resetFilter">
+          Filter wissen
+        </button>
       </div>
     </div>
 
+    <!-- Error -->
     <div v-if="error" class="error-message">{{ error }}</div>
-    <div v-if="loading" class="loading">Laden...</div>
 
-    <div v-if="result && !loading">
-      <p class="record-count">{{ result.totalRecords }} machines gevonden</p>
+    <!-- Loading -->
+    <div v-if="loading" class="loading">Machines laden...</div>
 
+    <!-- Table -->
+    <div v-if="result && !loading" class="table-wrapper card">
       <table class="machine-table">
         <thead>
           <tr>
@@ -69,37 +99,44 @@ onMounted(() => {
             <th>Locatie</th>
             <th>Status</th>
             <th>Aangemaakt</th>
-            <th></th>
+            <th class="col-action"></th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="machine in result.data" :key="machine.id">
-            <td>{{ machine.name }}</td>
-            <td>{{ machine.location }}</td>
+            <td class="col-name">
+              <RouterLink :to="`/machines/${machine.id}`">{{ machine.name }}</RouterLink>
+            </td>
+            <td class="col-location">{{ machine.location }}</td>
             <td>
               <span class="status-badge" :class="statusClass(machine.status)">
                 {{ machine.status }}
               </span>
             </td>
-            <td>{{ new Date(machine.createdAt).toLocaleDateString('nl-NL') }}</td>
-            <td>
-              <RouterLink :to="`/machines/${machine.id}`" class="btn btn-secondary">
-                Details
+            <td class="col-date">{{ new Date(machine.createdAt).toLocaleDateString('nl-NL') }}</td>
+            <td class="col-action">
+              <RouterLink :to="`/machines/${machine.id}`" class="btn btn-ghost">
+                Bekijken &rarr;
               </RouterLink>
             </td>
           </tr>
         </tbody>
       </table>
 
-      <div class="pagination">
-        <button class="btn btn-secondary" :disabled="page <= 1" @click="page--">Vorige</button>
-        <span>Pagina {{ result.currentPage }} van {{ result.totalPages }}</span>
-        <button
-          class="btn btn-secondary"
-          :disabled="page >= result.totalPages"
-          @click="page++"
-        >
-          Volgende
+      <!-- Empty state -->
+      <div v-if="result.data.length === 0" class="empty-state">
+        <p>Geen machines gevonden</p>
+        <p class="empty-hint">Pas de filters aan of registreer een nieuwe machine.</p>
+      </div>
+
+      <!-- Pagination -->
+      <div v-if="result.totalPages > 1" class="pagination">
+        <button class="btn btn-secondary" :disabled="page <= 1" @click="page--">
+          &larr; Vorige
+        </button>
+        <span>Pagina {{ result.currentPage }} van {{ result.totalPages.toLocaleString('nl-NL') }}</span>
+        <button class="btn btn-secondary" :disabled="page >= result.totalPages" @click="page++">
+          Volgende &rarr;
         </button>
       </div>
     </div>
@@ -107,58 +144,140 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.list-header {
+.page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 1.5rem;
 }
 
-.list-controls {
+.page-subtitle {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.filters {
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.filter-row {
   display: flex;
   gap: 1rem;
-  align-items: center;
+  align-items: flex-end;
 }
 
-.list-controls select {
-  width: auto;
-  min-width: 160px;
+.filter-group {
+  flex: 0 0 220px;
 }
 
-.record-count {
-  color: #666;
-  font-size: 0.9rem;
-  margin-bottom: 0.75rem;
+.filter-group select {
+  margin-top: 0.25rem;
+}
+
+.table-wrapper {
+  padding: 0;
+  overflow: hidden;
 }
 
 .machine-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.machine-table th,
-.machine-table td {
-  padding: 0.75rem 1rem;
-  text-align: left;
 }
 
 .machine-table th {
-  background: #f8f9fa;
+  padding: 0.875rem 1.25rem;
+  text-align: left;
+  font-size: 0.75rem;
   font-weight: 600;
-  font-size: 0.85rem;
   text-transform: uppercase;
-  color: #666;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.machine-table tr:not(:last-child) td {
-  border-bottom: 1px solid #eee;
+.machine-table td {
+  padding: 0.875rem 1.25rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
-.machine-table tr:hover td {
-  background: #f8f9fa;
+.machine-table tbody tr {
+  transition: background var(--transition);
+}
+
+.machine-table tbody tr:hover {
+  background: var(--color-primary-light);
+}
+
+.machine-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.col-name a {
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.col-name a:hover {
+  color: var(--color-primary);
+}
+
+.col-location {
+  color: var(--color-text-muted);
+}
+
+.col-date {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.col-action {
+  text-align: right;
+  width: 120px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.empty-state p {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
+
+.empty-hint {
+  font-size: 0.85rem !important;
+  color: var(--color-text-light) !important;
+  margin-top: 0.25rem;
+}
+
+.pagination {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--color-border-light);
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .filter-row {
+    flex-direction: column;
+  }
+
+  .filter-group {
+    flex: 1;
+  }
+
+  .col-date,
+  .col-action {
+    display: none;
+  }
 }
 </style>

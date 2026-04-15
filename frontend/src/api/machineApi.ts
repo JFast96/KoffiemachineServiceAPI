@@ -9,14 +9,49 @@ import type {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
+// --- Token management ---
+
+let authToken: string | null = localStorage.getItem('jwt_token')
+
+export function setToken(token: string) {
+  authToken = token
+  localStorage.setItem('jwt_token', token)
+}
+
+export function clearToken() {
+  authToken = null
+  localStorage.removeItem('jwt_token')
+}
+
+export function getToken(): string | null {
+  return authToken
+}
+
+// --- Base request ---
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  }
+
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`
+  }
+
+  const { headers: customHeaders, ...restOptions } = options || {}
   const response = await fetch(`${BASE_URL}${url}`, {
+    ...restOptions,
     headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers
-    },
-    ...options
+      ...headers,
+      ...(customHeaders as Record<string, string>)
+    }
   })
+
+  if (response.status === 401) {
+    clearToken()
+    window.dispatchEvent(new CustomEvent('auth:expired'))
+    throw new ApiError(401, 'Session expired. Please log in again.')
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: response.statusText }))
@@ -34,6 +69,39 @@ export class ApiError extends Error {
     super(message)
     this.name = 'ApiError'
   }
+}
+
+// --- Auth ---
+
+export interface LoginRequest {
+  username: string
+  password: string
+}
+
+export interface LoginResponse {
+  token: string
+  expiresAt: string
+}
+
+export async function login(data: LoginRequest): Promise<LoginResponse> {
+  const response = await fetch(`${BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: response.statusText }))
+    throw new ApiError(response.status, error.message || 'Login failed')
+  }
+
+  const result: LoginResponse = await response.json()
+  setToken(result.token)
+  return result
+}
+
+export function logout() {
+  clearToken()
 }
 
 // --- Machines ---

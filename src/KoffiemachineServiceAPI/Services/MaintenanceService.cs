@@ -59,12 +59,13 @@ public class MaintenanceService : IMaintenanceService
 
         var totalRecords = await query.CountAsync();
 
-        var actions = await query
+        var actions = (await query
             .OrderByDescending(ma => ma.PerformedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(ma => MapToResponse(ma))
-            .ToListAsync();
+            .ToListAsync())
+            .Select(MapToResponse)
+            .ToList();
 
         return new PagedResult<MaintenanceResponse>
         {

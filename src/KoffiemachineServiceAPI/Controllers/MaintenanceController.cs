@@ -1,11 +1,13 @@
 using KoffiemachineServiceAPI.DTOs;
 using KoffiemachineServiceAPI.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KoffiemachineServiceAPI.Controllers;
 
 [ApiController]
 [Route("api/machines/{machineId:guid}/maintenance")]
+[Authorize]
 public class MaintenanceController : ControllerBase
 {
     private readonly IMaintenanceService _maintenanceService;
@@ -19,6 +21,7 @@ public class MaintenanceController : ControllerBase
     /// Log a maintenance action for a specific machine.
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "Admin,Technicus")]
     [ProducesResponseType(typeof(MaintenanceResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Create(Guid machineId, [FromBody] CreateMaintenanceRequest request)

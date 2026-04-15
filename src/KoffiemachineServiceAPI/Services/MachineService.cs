@@ -43,12 +43,13 @@ public class MachineService : IMachineService
 
         var totalRecords = await query.CountAsync();
 
-        var machines = await query
+        var machines = (await query
             .OrderBy(m => m.Name)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(m => MapToResponse(m))
-            .ToListAsync();
+            .ToListAsync())
+            .Select(MapToResponse)
+            .ToList();
 
         return new PagedResult<MachineResponse>
         {
